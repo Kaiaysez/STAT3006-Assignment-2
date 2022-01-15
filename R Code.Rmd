@@ -1,0 +1,410 @@
+---
+title: "STAT3006 Assignment 2"
+author: "Chee Kitt Win"
+date: "9/19/2021"
+output: html_document
+---
+
+### LOAD DATA
+
+```{r}
+artificial = read.csv("C:\\Users\\Owner\\Desktop\\UQ Year 3 Sem 2 Courses\\STAT3006\\Assignment 2\\artificial2021.csv")
+library(lattice)
+data(iris)
+# plot(iris)
+# iris$Sepal.Length
+# iris$Sepal.Width
+# iris$Petal.Length
+# iris$Petal.Width
+# iris$Species
+```
+
+
+### 1. i) DRAFTSMAN PLOT OF IRIS DATA
+
+
+```{r}
+
+
+# Correlation panel
+panel.cor <- function(x, y){
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r <- round(cor(x, y), digits=2)
+  txt <- paste0("R = ", r)
+  cex.cor <- 0.8/strwidth(txt)
+  text(0.5, 0.5, txt, cex = cex.cor * r)
+}
+# Customize upper panel
+my_cols <- c("#FF0000", "#E7B800", "#0000FF")
+upper.panel<-function(x, y){
+  points(x,y, pch = 18, col = my_cols[iris$Species], cex = 0.6)
+}
+# Create the plots
+pairs(iris[,1:4], 
+      lower.panel = panel.cor,
+      upper.panel = upper.panel,
+      main = "Figure 1: Draftsman plot of R's inbuilt Iris dataset which consists of  \n 150 observations of 3 different species of Irises, each with 50 observations.  \n R denotes the correlation coefficients of the corresponding explanatory variables.",
+      cex.main = 0.8,
+      oma = c(3,3,7,8)
+      )
+legend(x = "right", xpd = TRUE, fill = c("#FF0000", "#E7B800", "#0000FF"), inset=c(-0.03,0), legend = c(levels(iris$Species)),cex = 0.6)
+```
+
+### 1. ii)  CORRELATION MATRICES OF EACH SPECIES
+### The correlation matrices for the setosa, versicolor, and virginica species in this order are given below.
+### Measurements and species for which absolute value of the sample correlation is 0.7 or greater:
+#### Setosa species: Sepal length and sepal width
+#### Versicolor species: Sepal length and petal length
+#### Versicolor species: Petal length and petal width
+#### Virginica species: Petal length and sepal length
+### Attributes for which the sample correlation is not significant at the 0.05 level:
+#### Setosa species: Petal length and sepal width
+#### The sample correlation is 0.177.Conducting a t-test yielded a p value of 0.217 which is not significant at the 0.05 level. Therefore there is no evidence to suggest that the true correlation is not equal to zero. More information below.
+
+```{r}
+cor.iris = cor(iris[,1:4])
+species <- split(iris, iris$Species)
+cor.setosa = cor(species[["setosa"]][,1:4])
+cor.setosa
+cor.versicolor = cor(species[["versicolor"]][,1:4])
+cor.versicolor
+cor.virginica = cor(species[["virginica"]][,1:4])
+cor.virginica
+# Testing the sample correlation of petal length and sepal width of sentosa irises for significance.
+cor.test(species[["setosa"]][,2], species[["setosa"]][,3], method = "pearson")
+```
+
+### 1. iii) ARE THE CLASSES MULTIVARIATE NORMAL?
+### Mardia's test tests for multivariate normality based on skewness and kurtosis.
+### Applying Mardia's test to the data, we find that the classes pass the skewness and kurtosis test (retaining the null hypothesis that they are multivariate normal). However, univariate tests for petal width and petal length for some of the classes have been found to give a significant p-value (rejecting the null hypothesis that they are univariate normal). The virginica class passed all the tests, but petal width was borderline significant with a p-value of 0.0508. 
+
+###Reference: 
+####Mardia, K. V. (1970). Measures of Multivariate Skewness and Kurtosis with Applications. Biometrika, 57(3), 519–530. https://doi.org/10.2307/2334770
+
+### In conclusion, the classes are unlikely to be multivariate normal. However, considering the small sample size, and given that the only problems seem to be petal width and petal length, we can make the case that the data is "normal enough" depending on our objective. For instance, with clustering, we might find that a Gaussian mixture model works well as long as the means are reasonably well spread out. For hypothesis tests, it depends on the test and how robust it is to non-normality.
+
+```{r}
+library(MVN)
+mvn(data = species$setosa[,1:4], mvnTest = "mardia")
+mvn(data = species$versicolor[,1:4], mvnTest = "mardia")
+mvn(data = species$virginica[,1:4], mvnTest = "mardia")
+
+```
+
+### 1. iv) SAMPLE MARGINAL DISTRIBUTIONS FOR EACH DIMENSION FOR EACH CLASS
+
+```{r}
+plot(density(species$setosa$Sepal.Length), main = "Marginal distribution of sepal length of setosa irises")
+plot(density(species$setosa$Sepal.Width), main = "Marginal distribution of sepal width of setosa irises")
+plot(density(species$setosa$Petal.Length), main = "Marginal distribution of petal length of setosa irises")
+plot(density(species$setosa$Petal.Width), main = "Marginal distribution of petal width of setosa irises")
+
+plot(density(species$versicolor$Sepal.Length), main = "Marginal distribution of sepal length of versicolor irises")
+plot(density(species$versicolor$Sepal.Width), main = "Marginal distribution of sepal width of versicolor irises")
+plot(density(species$versicolor$Petal.Length), main = "Marginal distribution of petal length of versicolor irises")
+plot(density(species$versicolor$Petal.Width), main = "Marginal distribution of petal width of versicolor irises")
+
+plot(density(species$virginica$Sepal.Length), main = "Marginal distribution of sepal length of virginica irises")
+plot(density(species$virginica$Sepal.Width), main = "Marginal distribution of sepal width of virginica irises")
+plot(density(species$virginica$Petal.Length), main = "Marginal distribution of petal length of virginica irises")
+plot(density(species$virginica$Petal.Width), main = "Marginal distribution of petal width of virginica irises")
+
+```
+
+### 1. iv) FITTING A MULTIVARIATE NORMAL DISTRIBUTION TO EACH CLASS USING MLE
+### To do this we find the maximum likelihood estimates of the mean vectors and covariance matrices for each class. This has been done below. We now have multivariate normal models for each class.
+### A caveat is that we have assumed that the observations are multivariate normal. This means that their marginal distributions should be univariate normal. However, looking at the above plots, the marginal distributions agree with the results in the previous section, i.e most of them look normal, but there are one or two which are definitely not normal, e.g petal width for setosa irises.
+### The marginal distributions are as follows (the mathematical form for each is simply the univariate Gaussian pdf with the mean and variance given below):
+
+#### Setosa_sepal_length ~ N(5.006,0.121764)
+#### Setosa_sepal_width ~ N(3.428,0.140816)
+#### Setosa_petal_length ~ N(1.462,0.029556)
+#### Setosa_petal_width ~ N(0.246,0.010884)
+
+#### Versicolor_sepal_length ~ N(5.936,0.261104)
+#### Versicolor_sepal_width ~ N(2.770,0.09650)
+#### Versicolor_petal_length ~ N(4.260,0.21640)
+#### Versicolor_petal_width ~ N(1.326,0.038324)
+
+#### Virginica_sepal_length ~ N(6.588,0.396256)
+#### Virginica_sepal_width ~ N(2.974,0.101924)
+#### Virginica_petal_length ~ N(5.552,0.298496)
+#### Virginica_petal_width ~ N(2.026,0.073924)
+
+```{r}
+# MLE of the mean vectors for setosa, versicolor and virginica irises
+mu_setosa = colMeans(species[["setosa"]][,1:4])
+print(mu_setosa)
+mu_versicolor = colMeans(species[["versicolor"]][,1:4])
+print(mu_versicolor)
+mu_virginica = colMeans(species[["virginica"]][,1:4])
+print(mu_virginica)
+
+
+# MLE of the covariance matrix for setosa, versicolor and virginica irises
+cov_setosa = (49/50)*cov(species[["setosa"]][,1:4])
+cov_setosa
+cov_versicolor = (49/50)*cov(species[["versicolor"]][,1:4])
+cov_versicolor
+cov_virginica = (49/50)*cov(species[["virginica"]][,1:4])
+cov_virginica
+```
+
+
+### 1. v) CONDITIONAL DISTRIBUTION FOR SEPAL LENGTH AND WIDTH CONDITIONED ON SAMPLE MEANS FOR PETAL LENGTH AND WIDTH (VIRGINICA CLASS)
+### The conditional distributions are also multivariate normal, and the means and covariance matrices are given below.
+
+```{r}
+mu1 = c(6.588,2.974)
+mu2 = c(5.552,2.026) 
+sigma11 = matrix(c(0.396256, 0.091888, 0.091888, 0.101924), nrow=2,ncol=2)
+sigma22 = matrix(c(0.298496, 0.047848, 0.047848, 0.073924), nrow=2,ncol=2)
+sigma12 = matrix(c(0.297224, 0.069952, 0.048112, 0.046676), nrow=2,ncol=2)
+sigma21 = matrix(c(0.297224, 0.048112, 0.069952, 0.046676), nrow=2,ncol=2)
+
+library(matlib)
+library(MASS)
+
+# Conditional distribution for sepal length and sepal width conditioned on the sample means for petal length and petal width for virginica irises
+# Mean
+cond_mu = mu1
+cond_mu
+# Covariance matrix
+cond_sigma = sigma11 - sigma12%*%solve(sigma22)%*%sigma21
+cond_sigma
+
+set.seed(5)
+slsw_c_muplpw <- mvrnorm(5000, mu = cond_mu, Sigma = cond_sigma)
+
+# Conditional distribution for petal length and petal width conditioned on the sample means for sepal length and sepal width for virginica irises
+# Mean
+cond2_mu = mu2
+cond2_mu
+# Covariance matrix
+cond2_sigma = sigma22 - sigma21%*%solve(sigma11)%*%sigma12
+cond2_sigma
+set.seed(5)
+plpw_c_muslsw = mvrnorm(5000, mu = cond2_mu, Sigma = cond2_sigma)
+
+
+contour(kde2d(slsw_c_muplpw[,1], slsw_c_muplpw[,2], n = 50), main = "Contour plot of sepal length and sepal width conditioned  \n on sample mean of petal length and pepal width (Virginica irises)", cex.main = 0.8)
+contour(kde2d(plpw_c_muslsw[,1], plpw_c_muslsw[,2], n = 50), main = "Contour plot of petal length and petal width conditioned  \n on sample mean of sepal length and sepal width (Virginica irises)", cex.main = 0.8)
+```
+
+
+### 1. vi) REPRESENTING THE OBSERVATIONS ON THE PLOT OF A CONDITIONAL DISTRIBUTION.
+### 
+
+
+
+### 1. vii) RESIDUAL MATRIX AND PLOTS
+### Based on the plots, it is hard to tell. There is too little data. If there was no other information to go by, I would say that it is not impossible that they are normally distributed.
+
+```{r}
+# MLE of the mean vectors for setosa, versicolor and virginica irises
+mu_setosa = colMeans(species[["setosa"]][,1:4])
+print(mu_setosa)
+mu_versicolor = colMeans(species[["versicolor"]][,1:4])
+print(mu_versicolor)
+mu_virginica = colMeans(species[["virginica"]][,1:4])
+print(mu_virginica)
+
+
+# MLE of the covariance matrix for setosa, versicolor and virginica irises
+cov_setosa = (49/50)*cov(species[["setosa"]][,1:4])
+cov_setosa
+cov_versicolor = (49/50)*cov(species[["versicolor"]][,1:4])
+cov_versicolor
+cov_virginica = (49/50)*cov(species[["virginica"]][,1:4])
+cov_virginica
+
+res_setosa = matrix(NA, nrow = 2, ncol = 50)
+for (i in 1:50){
+  res_setosa[,i] = t(species$setosa[i,3:4]) - matrix(colMeans(species$setosa[,3:4])) +    cov_setosa[c(3,4),c(1,2)]%*%solve(cov_setosa[c(1,2),c(1,2)])%*%t((species$setosa[,1:2]-colMeans(species$setosa[,1:2]))[i,])
+}
+plot(t(res_setosa),xlab = "Petal length residual", ylab = "Petal width residual", main = "Setosa residuals")
+
+res_virginica = matrix(NA, nrow = 2, ncol = 50)
+for (i in 1:50){
+  res_virginica[,i] = t(species$virginica[i,3:4]) - matrix(colMeans(species$virginica[,3:4])) +    cov_virginica[c(3,4),c(1,2)]%*%solve(cov_virginica[c(1,2),c(1,2)])%*%t((species$virginica[,1:2]-colMeans(species$virginica[,1:2]))[i,])
+}
+plot(t(res_virginica), xlab = "Petal length residual", ylab = "Petal width residual", main = "Virginica residuals")
+
+res_versicolor = matrix(NA, nrow = 2, ncol = 50)
+for (i in 1:50){
+  res_versicolor[,i] = t(species$versicolor[i,3:4]) - matrix(colMeans(species$versicolor[,3:4])) +    cov_versicolor[c(3,4),c(1,2)]%*%solve(cov_versicolor[c(1,2),c(1,2)])%*%t((species$versicolor[,1:2]-colMeans(species$versicolor[,1:2]))[i,])
+}
+plot(t(res_versicolor),xlab = "Petal length residual", ylab = "Petal width residual", main = "Versicolor residuals")
+```
+
+
+### 1. viii) a) MAHALANOBIS DISTANCE BETWEEN EACH PAIR OF SPECIES
+### Mahalanobis distance for:
+#### Setosa and Versicolor: 9.384397
+#### Setosa and Virginica: 13.258847
+#### Virginica and Versicolor: 4.105733
+### Assumptions: Common covariance matrix estimated by pooling. Given the calculated covariance matrices for each class in the earlier sections and also just from a visual test looking at the spread of the data, I think this is reasonable.
+
+```{r}
+library(HDMD)
+library(Morpho)
+Mahala = pairwise.mahalanobis(iris[,1:4], grouping = t(iris[,5]), cov = (50/49)*covW(iris[,1:4], t(iris[,5])), inverted = FALSE)
+Mahala
+sqrt(Mahala$distance)
+```
+### 1. viii) b) WHICH TWO SPECIES SEEM THE MOST SIMILAR
+### Versicolor and virginica. The mahalanobis distance between them is very low, and this can be verified again with a visual test when looking at the marginal plots. A clustering algorithm would probably have the hardest time identifying these 2 species as separate clusters.
+
+### 1. viii) c)
+### Petal length and petal width both seem to discriminate best between the three species. If we take a look at the draftsman plot, we can see that the data can almost be clustered just based on one of these variables.
+
+### 2. i) HOTELLING T TEST
+### We get an extremely significant p value (very close to 0) and so we reject the null hypothesis (that there is no difference in means between versicolor and virginica at a 0.05 significance level).  
+
+```{r}
+library(Hotelling)
+h = hotelling.test(iris[51:100,1:4], iris[101:150,1:4])
+h
+```
+
+### 2. ii) 
+```{r}
+
+# for (i in 31:50){
+#   versi = iris[51:100,1:4][sample(nrow(iris[51:100,1:4]), i), ]
+#   virgi = iris[101:150,1:4][sample(nrow(iris[101:150,1:4]), i), ]
+#   hot = hotelling.test(versi,virgi)
+#   append(x = p, values = hot$pval)
+#   append(x = h, values = i)
+# }
+```
+
+### 3. i) DERIVATION OF THE EM ALGORITHM
+### Attached at the end of this PDF
+
+### 3. ii) GMM WITH SPHERICAL COVARIANCE MATRICES VS K MEANS
+
+### This is not true because first of all, K-means is merely an algorithm that partitions clusters in the feature space, whereas a Gaussian mixture model is a data model. The EM-algorithm is simply a means to estimate the parameters of the model. Although they are two fundamentally different things, we can use the EM-algorithm to mimic K means, but spherical covariance matrices is not enough. This is because the update equations of the component means are different. K means hard assigns an observation to an estimated component mean at each iteration, then updates the new estimated component means by taking the mean of the observations assigned to a particular component.The EM algorithm assigns each observation a probability that they belong to a particular component. For the EM algorithm, the updated estimated component mean in a successive iteration depends not only on the current estimated component mean, but also on the current estimated component proportion and covariance matrix. Secondly, the K-Means algorithm will always perfectly partition the clusters in the feature space whereas the EM algorithm is used to
+
+### To make the EM algorithm behave similarly to the K means algorithm whilst retaining data generating capabilities, besides having spherical covariance matrices with the same number of components, we require the following modifications:
+#### -The EM algorithm is run with a common (spherical) covariance matrix over all the components.
+#### -Do hard allocation instead of soft allocation. That is, let h_max denote the component with the highest posterior probability that observation i has been drawn from component h. Re-assign this posterior probability for h_max to 1, and re-assign it to 0 for all the other components. This mimics how K means assigns every observation to an estimated component mean.
+#### -Once the algorithm has been halted, we can use the estimated parameters to fit the Gaussian mixture model and assign observations to clusters based on the most probable component.
+#### -If we further add the constraint that the component proportions must be equal,then the update equation for the component means of our modified EM-Algorithm would behave identically to K-means. I think it might still possible to get something similar to K means without this constraint if we have good initialization of our component means, and the component proportions are initialized as equal.
+
+
+### 3. iii) CHOOSING THE NUMBER OF CLUSTERS FOR K MEANS AND MIXTURE MODELS
+### I had no time left to write this down in pseudocode, but I will state the relevant methods. For K means, we can use the gap statistic. For Mixture models, the bayesian information criterion (BIC) can be used.
+
+### 3. iv) HOW MANY CLUSTERS ARE PRESENT IN THE ARTIFICIAL DATASET?
+### Looking at the following plot, just by eye it looks like there are two clusters. The following density plots also confirm that there is a bimodality when you look at the marginal density V2. In the following sections I justify this by considering the BIC.
+
+```{r}
+summary(artificial)
+plot(artificial)
+densityplot(artificial[,1])
+densityplot(artificial[,2])
+```
+
+### 3. v) APPLYING K MEANS AND MIXTURE MODEL (EM) ALGORITHMS TO THE IRIS AND ARTIFICIAL DATASET
+### For the iris data set, based on the gap statistic, 3 or 4 seems like a reasonable choice. Looking at the K means performance for k = 2, k = 3, and k = 4, it seems to do a good job of clustering. The k = 3 case looks very similar to our actual classes, and even though for instance k = 2 is wrong, the seperation looks very reasonable. 
+
+### Now looking at the BIC, it recomends 2 or 3 clusters as the best choices. Again this is very reasonable. The EM algorithm also does a good job of clustering here as it has managed to cluster the 3 species.
+
+### Moving on to the artificial dataset, without any further information I would assume that it has 2 clusters just looking at it visually. The gap statistic and BIC also agrees with this and recommends k = 2. However, we see that here, the EM algorithm clusters look much more realistic than the K means clustering. This is because K means linearly partitions the observations in the feature space. This was not clear in the iris dataset because we were looking at marginal plots. But now that 2 dimensions allows us to see the whole feature space, we can see how K means clearly partitions the data, allowing no overlaps between clusters. Since the EM algorithm is in this case being used to find estimates for a gaussian mixture model, the clusters look much more realistic.
+
+### K MEANS ON THE IRIS DATASET
+
+```{r}
+set.seed(5)
+# Modified code from the tutorial
+library(cluster)
+gapstatres <- clusGap(iris[,1:4], FUN = kmeans, nstart = 20, K.max = 6, B = 100) # use 100 bootstrap samples, maximum clusters = 4, 
+gapstatres
+plot(gapstatres, main = "Gap statistic with 100 bootstrap samples and 20 restarts per k")
+
+set.seed(5)
+kres2 <- kmeans(iris[,1:4],centers=2)
+set.seed(5)
+kres3 <- kmeans(iris[,1:4],centers=3)
+set.seed(5)
+kres4 <- kmeans(iris[,1:4],centers=4)
+
+pairs(iris[,1:4], col=c(1:2)[kres2$cluster])
+pairs(iris[,1:4], col=c(1:3)[kres3$cluster])
+pairs(iris[,1:4], col=c(1:4)[kres4$cluster])
+```
+
+### EM ALGORITHM ON THE IRIS DATASET
+
+```{r}
+library(mclust)
+set.seed(5)
+BIC_iris = mclustBIC(iris[,1:4])
+plot(BIC_iris)
+
+set.seed(5)
+EM_iris2 = Mclust(iris[,1:4],G = 2)
+set.seed(5)
+EM_iris3 = Mclust(iris[,1:4],G = 3)
+set.seed(5)
+EM_iris4 = Mclust(iris[,1:4],G = 4)
+
+plot(EM_iris2, what = "classification")
+plot(EM_iris3, what = "classification")
+plot(EM_iris4, what = "classification")
+```
+
+### K MEANS ON THE ARTIFICIAL DATASET
+
+```{r}
+set.seed(5)
+# Modified code from the tutorial
+gapstatres <- clusGap(artificial, FUN = kmeans, nstart = 20, K.max = 4, B = 100) # use 100 bootstrap samples, maximum clusters = 4, 
+gapstatres
+plot(gapstatres, main = "Gap statistic with 100 bootstrap samples and 20 restarts per k")
+
+
+set.seed(5)
+km_art2 <- kmeans(artificial,centers=2)
+plot(artificial[,1],artificial[,2],col=km_art2$cluster)
+
+set.seed(5)
+km_art3 <- kmeans(artificial,centers=3)
+plot(artificial[,1],artificial[,2],col=km_art3$cluster)
+
+set.seed(5)
+km_art4 <- kmeans(artificial,centers=4)
+plot(artificial[,1],artificial[,2],col=km_art4$cluster)
+
+
+```
+
+### EM ALGORITHM ON THE ARTIFICIAL DATASET
+
+```{r}
+set.seed(5)
+BIC = mclustBIC(artificial)
+plot(BIC)
+
+set.seed(5)
+EM_art = Mclust(artificial, x=BIC)
+plot(EM_art, what = "classification")
+EM_art$parameters
+```
+
+
+
+### 3. vi) PARAMETER ESTIMATES AND 95% CONFIDENCE INTERVALS
+
+### 3. vii) a) CONTOUR PLOT OF THE FITTED MIXTURE DISTRIBUTION ON THE ARTIFICIAL DATA
+
+```{r}
+plot(EM_art, what = "density")
+```
+
+### 3. vii) b) CONTOUR PLOTS OF THE COMPONENTS OF THE FITTED MIXTURE DISTRIBUTION ON THE ARTIFICIAL DATA
+```{r}
+plot(EM_art, what = "classification")
+```

@@ -2,7 +2,8 @@
 
 ### About
 * Exploratory data analysis and multivariate hypothesis testing on the iris dataset.
-* Derivation of the EM algorithm. Comparing and contrasting EM and K-Means, implementation in R.
+* Mathematical derivation of the EM algorithm update equations.
+* Comparing and contrasting EM and K-Means, implementation in R.
 * Model selection via gap statistic and the Bayesian Information Criterion (BIC).
 
 

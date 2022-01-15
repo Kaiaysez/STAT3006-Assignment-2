@@ -13,3 +13,4 @@
 * Python Code.py: *Python code used for the report.*
 * R Code.Rmd: *R code used for the report.*
 
+Note: If using a mobile browser, you might have to download the PDF files to view them.
